@@ -162,6 +162,8 @@ sealed trait Heap[A] {
     F.map(F.traverse(toStream)(f))(fromCodata[Stream, B])
   }
 
+  def foldLeft[B](z: B)(f: (B, A) => B): B = toStream.foldLeft(z)(f)
+
   def foldRight[B](z: B)(f: (A, => B) => B): B = {
     import std.stream._
     Foldable[Stream].foldRight(toStream, z)(f)
@@ -348,6 +350,7 @@ object Heap extends HeapFunctions with HeapInstances {
 
 trait HeapInstances {
   implicit def heapInstance = new Foldable[Heap] with Foldable.FromFoldr[Heap] {
+    override def foldLeft[A, B](fa: Heap[A], z: B)(f: (B, A) => B) = fa.foldLeft(z)(f)
     def foldRight[A, B](fa: Heap[A], z: => B)(f: (A, => B) => B) = fa.foldRight(z)(f)
   }
 
