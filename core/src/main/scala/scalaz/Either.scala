@@ -96,7 +96,7 @@ sealed trait \/[+A, +B] {
     }
 
   /** Traverse on the right of this disjunction. */
-  def traverse[F[+_]: Applicative, D](g: B => F[D]): F[A \/ D] =
+  def traverse[F[_]: Applicative, AA >: A, D](g: B => F[D]): F[AA \/ D] =
     this match {
       case a @ -\/(_) => Applicative[F].point(a)
       case \/-(b) => Functor[F].map(g(b))(\/-(_))
@@ -360,7 +360,7 @@ trait DisjunctionInstances2 extends DisjunctionInstances3 {
     def point[A](a: => A) =
       \/-(a)
 
-    def traverseImpl[G[+_] : Applicative, A, B](fa: L \/ A)(f: A => G[B]) =
+    def traverseImpl[G[_] : Applicative, A, B](fa: L \/ A)(f: A => G[B]) =
       fa.traverse(f)
 
     override def foldRight[A, B](fa: L \/ A, z: => B)(f: (A, => B) => B) =
