@@ -9,6 +9,7 @@ package scalaz
 trait NaturalHashable[F] extends Equal[F] { self =>
   ////
 
+  /** The natural hashcode of `a`. */
   final def ###(a: F): Int = a.##
 
   // derived functions
