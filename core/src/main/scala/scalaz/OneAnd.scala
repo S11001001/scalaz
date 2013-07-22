@@ -158,6 +158,12 @@ trait OneAndInstances1 extends OneAndInstances2 {
     new OneAndFoldable[F] {
       def F = implicitly
     }
+
+  implicit def oneAndEqual[F[_], A](implicit A: Equal[A], FA: Equal[F[A]]): Equal[OneAnd[F, A]] =
+    new OneAndEqual[F, A] {
+      def OA = A
+      def OFA = FA
+    }
 }
 
 private[scalaz]
@@ -180,15 +186,18 @@ trait OneAndInstances0 extends OneAndInstances1 {
       def F = implicitly
     }
 
-  implicit def oneAndEqual[F[_], A](implicit A: Equal[A], FA: Equal[F[A]]): Equal[OneAnd[F, A]] =
-    new OneAndEqual[F, A] {
-      def OA = A
-      def OFA = FA
-    }
-
   implicit def oneAndTraverse[F[_]: Traverse]: Traverse1[({type λ[α] = OneAnd[F, α]})#λ] =
     new OneAndTraverse[F] {
       def F = implicitly
+    }
+
+  implicit def oneAndOrder[F[_], A](implicit A: Order[A], FA: Order[F[A]]): Order[OneAnd[F, A]] =
+    new Order[OneAnd[F, A]] with OneAndEqual[F, A] {
+      def OA = A
+      def OFA = FA
+      def order(a1: OneAnd[F, A], a2: OneAnd[F, A]) =
+        Monoid[Ordering].append(A.order(a1.head, a2.head),
+                                FA.order(a1.tail, a2.tail))
     }
 }
 
@@ -210,14 +219,8 @@ trait OneAndInstances extends OneAndInstances0 {
         Cord("OneAnd(", A.show(f.head), ",", FA.show(f.tail), ")")
     }
 
-  implicit def oneAndOrder[F[_], A](implicit A: Order[A], FA: Order[F[A]]): Order[OneAnd[F, A]] =
-    new Order[OneAnd[F, A]] with OneAndEqual[F, A] {
-      def OA = A
-      def OFA = FA
-      def order(a1: OneAnd[F, A], a2: OneAnd[F, A]) =
-        Monoid[Ordering].append(A.order(a1.head, a2.head),
-                                FA.order(a1.tail, a2.tail))
-    }
+  implicit def oneAndNaturalHashable[F[_], A](implicit A: NaturalHashable[A], FA: NaturalHashable[F[A]]): NaturalHashable[OneAnd[F, A]] =
+    NaturalHashable.instance
 
   implicit def oneAndSemigroup[F[_]: Applicative: Plus, A]: Semigroup[OneAnd[F, A]] =
     oneAndPlus[F].semigroup
