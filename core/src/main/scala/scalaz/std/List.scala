@@ -4,8 +4,14 @@ package std
 import scalaz.Id._
 import annotation.tailrec
 
-trait ListInstances0 {
+sealed trait ListInstances1 {
   implicit def listEqual[A](implicit A0: Equal[A]) = new ListEqual[A] {
+    implicit def A = A0
+  }
+}
+
+sealed trait ListInstances0 extends ListInstances1 {
+  implicit def listOrder[A](implicit A0: Order[A]): Order[List[A]] = new ListOrder[A] {
     implicit def A = A0
   }
 }
@@ -95,9 +101,8 @@ trait ListInstances extends ListInstances0 {
     override def show(as: List[A]) = "[" +: Cord.mkCord(",", as.map(Show[A].show):_*) :+ "]"
   }
 
-  implicit def listOrder[A](implicit A0: Order[A]): Order[List[A]] = new ListOrder[A] {
-    implicit def A = A0
-  }
+  implicit def listNaturalHashable[A: NaturalHashable]: NaturalHashable[List[A]] =
+    NaturalHashable.instance
 }
 
 trait ListFunctions {

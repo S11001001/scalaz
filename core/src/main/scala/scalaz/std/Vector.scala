@@ -8,10 +8,14 @@ trait IndexedSeqSubVector extends IndexedSeqSub {
   protected final def empty[A] = Vector()
 }
 
-trait VectorInstances0 {
+sealed trait VectorInstances1 {
   implicit def vectorEqual[A](implicit A0: Equal[A]) = new IndexedSeqEqual[A, Vector[A]] {
     implicit def A = A0
   }
+}
+
+sealed trait VectorInstances0 extends VectorInstances1 {
+  implicit def vectorOrder[A](implicit A0: Order[A]): Order[Vector[A]] = generic.ixSqOrder
 }
 
 trait VectorInstances extends VectorInstances0 {
@@ -23,7 +27,8 @@ trait VectorInstances extends VectorInstances0 {
 
   implicit def vectorShow[A: Show]: Show[Vector[A]] = generic.ixSqShow
 
-  implicit def vectorOrder[A](implicit A0: Order[A]): Order[Vector[A]] = generic.ixSqOrder
+  implicit def vectorNaturalHashable[A: NaturalHashable]: NaturalHashable[Vector[A]] =
+    NaturalHashable.instance
 }
 
 object vector extends IndexedSeqSubVector with VectorInstances with IndexedSeqSubFunctions {

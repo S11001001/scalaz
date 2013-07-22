@@ -2,7 +2,13 @@ package scalaz
 package std
 
 
-trait StreamInstances {
+sealed trait StreamInstances0 {
+  implicit def streamEqual[A](implicit A0: Equal[A]) = new Equal[Stream[A]] {
+    def equal(a1: Stream[A], a2: Stream[A]) = (a1 corresponds a2)(A0.equal)
+  }
+}
+
+trait StreamInstances extends StreamInstances0 {
   implicit val streamInstance: Traverse[Stream] with MonadPlus[Stream] with Each[Stream] with Index[Stream] with Length[Stream] with Zip[Stream] with Unzip[Stream] with IsEmpty[Stream] with Cojoin[Stream] with Cobind.FromCojoin[Stream] = new Traverse[Stream] with MonadPlus[Stream] with Each[Stream] with Index[Stream] with Length[Stream] with Zip[Stream] with Unzip[Stream] with IsEmpty[Stream] with Cojoin[Stream] with Cobind.FromCojoin[Stream]{
     def cojoin[A](a: Stream[A]) = a.tails.toStream.init
     def traverseImpl[G[_], A, B](fa: Stream[A])(f: A => G[B])(implicit G: Applicative[G]): G[Stream[B]] = {
@@ -73,9 +79,8 @@ trait StreamInstances {
     def zero: Stream[A] = scala.Stream.empty
   }
 
-  implicit def streamEqual[A](implicit A0: Equal[A]) = new Equal[Stream[A]] {
-    def equal(a1: Stream[A], a2: Stream[A]) = (a1 corresponds a2)(A0.equal)
-  }
+  implicit def streamNaturalHashable[A: NaturalHashable]: NaturalHashable[Stream[A]] =
+    NaturalHashable.instance
   implicit def streamShow[A](implicit A0: Show[A]) = new Show[Stream[A]] {
     override def show(as: Stream[A]) = "Stream(" +: stream.intersperse(as.map(A0.show), Cord(",")).foldLeft(Cord())(_ ++ _) :+ ")"
   }
