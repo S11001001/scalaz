@@ -15,12 +15,12 @@ sealed trait VectorInstances1 {
 }
 
 sealed trait VectorInstances0 extends VectorInstances1 {
+  object generic extends IndexedSeqSubVector with IndexedSeqSubInstances
+
   implicit def vectorOrder[A](implicit A0: Order[A]): Order[Vector[A]] = generic.ixSqOrder
 }
 
 trait VectorInstances extends VectorInstances0 {
-  object generic extends IndexedSeqSubVector with IndexedSeqSubInstances
-
   implicit val vectorInstance = generic.ixSqInstance
 
   implicit def vectorMonoid[A]: Monoid[Vector[A]] = generic.ixSqMonoid
