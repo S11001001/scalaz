@@ -6,6 +6,8 @@ sealed abstract class NaturalHashableOps[F] extends Ops[F] {
   implicit def F: NaturalHashable[F]
   ////
 
+  final def ###: Int = F.###(self)
+
   ////
 }
 

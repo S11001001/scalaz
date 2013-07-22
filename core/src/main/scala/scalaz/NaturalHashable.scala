@@ -9,11 +9,13 @@ package scalaz
 trait NaturalHashable[F] extends Equal[F] { self =>
   ////
 
+  final def ###(a: F): Int = a.##
+
+  // derived functions
+
   final def equal(a1: F, a2: F) = a1 == a2
 
   override final def equalIsNatural = true
-
-  // derived functions
 
   ////
   val naturalHashableSyntax = new scalaz.syntax.NaturalHashableSyntax[F] { def F = NaturalHashable.this }
