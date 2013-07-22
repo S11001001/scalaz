@@ -349,7 +349,24 @@ trait TupleInstances1 extends TupleInstances0 {
 
 }
 
-trait TupleInstances extends TupleInstances1
+trait TupleInstances extends TupleInstances1 {
+  implicit def tuple1NaturalHashable[A1: NaturalHashable]: NaturalHashable[Tuple1[A1]] =
+    NaturalHashable.instance
+  implicit def tuple2NaturalHashable[A1: NaturalHashable, A2: NaturalHashable]: NaturalHashable[(A1, A2)] =
+    NaturalHashable.instance
+  implicit def tuple3NaturalHashable[A1: NaturalHashable, A2: NaturalHashable, A3: NaturalHashable]: NaturalHashable[(A1, A2, A3)] =
+    NaturalHashable.instance
+  implicit def tuple4NaturalHashable[A1: NaturalHashable, A2: NaturalHashable, A3: NaturalHashable, A4: NaturalHashable]: NaturalHashable[(A1, A2, A3, A4)] =
+    NaturalHashable.instance
+  implicit def tuple5NaturalHashable[A1: NaturalHashable, A2: NaturalHashable, A3: NaturalHashable, A4: NaturalHashable, A5: NaturalHashable]: NaturalHashable[(A1, A2, A3, A4, A5)] =
+    NaturalHashable.instance
+  implicit def tuple6NaturalHashable[A1: NaturalHashable, A2: NaturalHashable, A3: NaturalHashable, A4: NaturalHashable, A5: NaturalHashable, A6: NaturalHashable]: NaturalHashable[(A1, A2, A3, A4, A5, A6)] =
+    NaturalHashable.instance
+  implicit def tuple7NaturalHashable[A1: NaturalHashable, A2: NaturalHashable, A3: NaturalHashable, A4: NaturalHashable, A5: NaturalHashable, A6: NaturalHashable, A7: NaturalHashable]: NaturalHashable[(A1, A2, A3, A4, A5, A6, A7)] =
+    NaturalHashable.instance
+  implicit def tuple8NaturalHashable[A1: NaturalHashable, A2: NaturalHashable, A3: NaturalHashable, A4: NaturalHashable, A5: NaturalHashable, A6: NaturalHashable, A7: NaturalHashable, A8: NaturalHashable]: NaturalHashable[(A1, A2, A3, A4, A5, A6, A7, A8)] =
+    NaturalHashable.instance
+}
 
 object tuple extends TupleInstances {
   object tupleSyntax extends scalaz.syntax.std.ToTupleOps

@@ -303,6 +303,9 @@ trait DisjunctionInstances extends DisjunctionInstances0 {
   /** Turns out that Either is just a glorified tuple; who knew? */
   type GlorifiedTuple[+A, +B] =
   A \/ B
+
+  implicit def DisjunctionNaturalHashable[A: NaturalHashable, B: NaturalHashable]: NaturalHashable[A \/ B] =
+    NaturalHashable.instance
 }
 
 trait DisjunctionInstances0 extends DisjunctionInstances1 {
