@@ -38,9 +38,8 @@ object TypeClass {
   lazy val traverse1 = TypeClass("Traverse1", *->*, extendsList = Seq(traverse, foldable1))
 
   lazy val contravariant = TypeClass("Contravariant", *->*, extendsList = Seq(invariantFunctor))
-  lazy val cojoin = TypeClass("Cojoin", *->*, extendsList = Seq(functor))
   lazy val cobind = TypeClass("Cobind", *->*, extendsList = Seq(functor))
-  lazy val comonad = TypeClass("Comonad", *->*, extendsList = Seq(cojoin, cobind))
+  lazy val comonad = TypeClass("Comonad", *->*, extendsList = Seq(cobind))
   lazy val cozip = TypeClass("Cozip", *->*)
 
   lazy val plus = TypeClass("Plus", *->*, extendsList = Seq())
@@ -90,7 +89,6 @@ object TypeClass {
     cozip,
     bind,
     monad,
-    cojoin,
     cobind,
     comonad,
     plus,
@@ -247,7 +245,7 @@ object %s {
         """%s
 
 /** Wraps a value `self` and provides methods related to `%s` */
-trait %sOps[F] extends Ops[F] {
+sealed abstract class %sOps[F] extends Ops[F] {
   implicit def F: %s[F]
   ////
 
@@ -295,7 +293,7 @@ trait %sSyntax[F] %s {
     """%s
 
 /** Wraps a value `self` and provides methods related to `%s` */
-trait %sOps[F[_],A] extends Ops[F[A]] {
+sealed abstract class %sOps[F[_],A] extends Ops[F[A]] {
   implicit def F: %s[F]
   ////
 
@@ -349,7 +347,7 @@ trait %sSyntax[F[_]] %s {
     """%s
 
 /** Wraps a value `self` and provides methods related to `%s` */
-trait %sOps[F[_, _],A, B] extends Ops[F[A, B]] {
+sealed abstract class %sOps[F[_, _],A, B] extends Ops[F[A, B]] {
   implicit def F: %s[F]
   ////
 

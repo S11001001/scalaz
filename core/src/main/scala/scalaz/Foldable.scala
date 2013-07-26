@@ -8,6 +8,9 @@ package scalaz
 ////
 trait Foldable[F[_]]  { self =>
   ////
+  import collection.generic.CanBuildFrom
+  import collection.immutable.IndexedSeq
+
   /** Map each element of the structure to a [[scalaz.Monoid]], and combine the results. */
   def foldMap[A,B](fa: F[A])(f: A => B)(implicit F: Monoid[B]): B
   /** As `foldMap` but returning `None` if the foldable is empty and `Some` otherwise */
@@ -84,10 +87,11 @@ trait Foldable[F[_]]  { self =>
   final def foldlM[G[_], A, B](fa: F[A], z: => B)(f: B => A => G[B])(implicit M: Monad[G]): G[B] =
     foldLeftM(fa, z)((b, a) => f(b)(a))
 
-  def length[A](fa: F[A]): Int = {
-    import scalaz.std.anyVal._
-    foldMap(fa)(_ => 1)
-  }
+  /** Deforested alias for `toStream(fa).size`. */
+  def count[A](fa: F[A]): Int = foldLeft(fa, 0)((b, _) => b + 1)
+
+  /** Alias for `count`. */
+  def length[A](fa: F[A]): Int = count(fa)
 
   /**
    * @return the element at index `i` in a `Some`, or `None` if the given index falls outside of the range
@@ -111,6 +115,8 @@ trait Foldable[F[_]]  { self =>
   def toIndexedSeq[A](fa: F[A]): IndexedSeq[A] = foldLeft(fa, IndexedSeq[A]())(_ :+ _)
   def toSet[A](fa: F[A]): Set[A] = foldLeft(fa, Set[A]())(_ + _)
   def toStream[A](fa: F[A]): Stream[A] = foldRight[A, Stream[A]](fa, Stream.empty)(Stream.cons(_, _))
+  def to[A, G[_]](fa: F[A])(implicit c: CanBuildFrom[Nothing, A, G[A]]): G[A] =
+    foldLeft(fa, c())(_ += _).result
 
   /** Whether all `A`s in `fa` yield true from `p`. */
   def all[A](fa: F[A])(p: A => Boolean): Boolean = foldRight(fa, true)(p(_) && _)
@@ -122,8 +128,6 @@ trait Foldable[F[_]]  { self =>
   /** `any` with monadic traversal. */
   def anyM[G[_], A](fa: F[A])(p: A => G[Boolean])(implicit G: Monad[G]): G[Boolean] =
     foldRight(fa, G.point(false))((a, b) => G.bind(p(a))(q => if(q) G.point(true) else b))
-  /** Deforested alias for `toStream(fa).size`. */
-  def count[A](fa: F[A]): Int = foldLeft(fa, 0)((b, _) => b + 1)
 
   import Ordering.{GT, LT}
   import std.option.{some, none}

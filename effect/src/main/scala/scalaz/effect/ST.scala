@@ -8,7 +8,7 @@ import ST._
 import std.function._
 import Id._
 
-/**Mutable variable in state thread S containing a value of type A. http://research.microsoft.com/en-us/um/people/simonpj/papers/lazy-functional-state-threads.ps.Z */
+/**Mutable variable in state thread S containing a value of type A. [[http://research.microsoft.com/en-us/um/people/simonpj/papers/lazy-functional-state-threads.ps.Z]] */
 sealed trait STRef[S, A] {
   protected var value: A
 
@@ -188,7 +188,7 @@ trait STFunctions {
 
 trait STInstance0 {
   implicit def stSemigroup[S, A](implicit A: Semigroup[A]): Semigroup[ST[S, A]] =
-      Monoid.liftSemigroup[({type λ[α] = ST[S, α]})#λ, A](ST.stMonad[S], A)
+      Semigroup.liftSemigroup[({type λ[α] = ST[S, α]})#λ, A](ST.stMonad[S], A)
 }
 
 trait STInstances extends STInstance0 {

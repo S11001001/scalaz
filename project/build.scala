@@ -43,7 +43,7 @@ object build extends Build {
     organization := "org.scalaz",
 
     scalaVersion := "2.10.1",
-    crossScalaVersions := Seq("2.9.2", "2.9.3", "2.10.1"),
+    crossScalaVersions := Seq("2.9.3", "2.10.1"),
     resolvers += Resolver.sonatypeRepo("releases"),
 
     scalacOptions <++= (scalaVersion) map { sv =>
@@ -174,6 +174,13 @@ object build extends Build {
       typeClasses := TypeClass.core,
       sourceGenerators in Compile <+= (sourceManaged in Compile) map {
         dir => Seq(generateTupleW(dir))
+      },
+      libraryDependencies <++= scalaVersion{ v =>
+        if((v startsWith "2.9") || (v startsWith "2.10")) Seq()
+        else Seq(
+          "org.scala-lang" % "scala-parser-combinators" % v,
+          "org.scala-lang" % "scala-xml" % v
+        )
       },
       sourceGenerators in Compile <+= buildInfo,
       buildInfoKeys := Seq[BuildInfoKey](version, scalaVersion),
@@ -365,7 +372,7 @@ object build extends Build {
       (pimp, conv)
     }
 
-    val source = "package scalaz\npackage syntax\npackage std\n\n" +
+    val source = "package scalaz\npackage syntax\npackage std\n\nimport collection.immutable.IndexedSeq\n\n" +
       tuples.map(_._1).mkString("\n") +
       "\n\ntrait ToTupleOps {\n" +
          tuples.map("  " + _._2).mkString("\n") +
