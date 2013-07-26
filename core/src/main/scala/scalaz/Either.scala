@@ -365,8 +365,8 @@ trait DisjunctionInstances2 extends DisjunctionInstances3 {
       a orElse b
 
     def pextract[B, A](fa: L \/ A): (L \/ B) \/ A = fa match {
-      case l@-\/(_) => -\/(l)
-      case r@\/-(_) => r
+      case l@ -\/(_) => -\/(l)
+      case r@ \/-(_) => r
     }
   }
 

@@ -430,7 +430,7 @@ trait ValidationInstances2 extends ValidationInstances3 {
       a orElse b
 
     def pextract[B, A](fa: Validation[L,A]): Validation[L,B] \/ A =
-      fa.fold(l => -\/(failure(l)), \/.right)
+      fa.fold(l => -\/(Failure(l)), \/.right)
   }
 }
 

@@ -51,8 +51,6 @@ trait OptionInstances extends OptionInstances0 {
         case Some((a, b)) => (Some(a), Some(b))
       }
 
-    override def isEmpty[A](opt: Option[A]) = opt.isEmpty
-
     def cobind[A, B](fa: Option[A])(f: Option[A] => B) =
       fa map (a => f(Some(a)))
 

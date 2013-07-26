@@ -127,7 +127,7 @@ trait LazyOptionInstances {
     def zip[A, B](a: => LazyOption[A], b: => LazyOption[B]) = a zip b
     def unzip[A, B](a: LazyOption[(A, B)]) = a.unzip
     def pextract[B, A](fa: LazyOption[A]): LazyOption[B] \/ A =
-      a.fold(\/.right, -\/(lazyNone))
+      fa.fold(a => \/-(a), -\/(lazyNone))
     override def isDefined[A](fa: LazyOption[A]): Boolean = fa.isDefined
   }
 

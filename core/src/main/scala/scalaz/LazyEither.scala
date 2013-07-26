@@ -164,7 +164,7 @@ trait LazyEitherInstances {
       )
 
    def pextract[B, A](fa: LazyEither[E,A]): LazyEither[E,B] \/ A =
-     fa.fold(e => -\/(lazyLeft(e)), \/.right)
+     fa.fold(e => -\/(LazyEither.lazyLeft(e)), a => \/-(a))
   }
 
   implicit def lazyEitherBitraverse: Bitraverse[LazyEither] = new Bitraverse[LazyEither] {
