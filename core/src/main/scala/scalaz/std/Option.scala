@@ -59,9 +59,10 @@ trait OptionInstances extends OptionInstances0 {
     def cojoin[A](a: Option[A]) =
       a map (Some(_))
 
-    def getOrElse[A](fa: Option[A])(default: => A): A = fa.getOrElse(default)
-    def isDefined[A](fa: Option[A]): Boolean = fa.isDefined
-    def toOption[A](fa: Option[A]): Option[A] = fa
+    def pextract[B, A](fa: Option[A]): Option[B] \/ A =
+      fa map \/.right getOrElse -\/(None)
+    override def isDefined[A](fa: Option[A]): Boolean = fa.isDefined
+    override def toOption[A](fa: Option[A]): Option[A] = fa
   }
 
   implicit def optionMonoid[A: Semigroup]: Monoid[Option[A]] = new Monoid[Option[A]] {
