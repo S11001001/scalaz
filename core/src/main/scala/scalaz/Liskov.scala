@@ -5,6 +5,11 @@ package scalaz
  *
  * `A <: B` holds whenever `A` could be used in any negative context that expects a `B`.
  * (e.g. if you could pass an `A` into any function that expects a `B`.)
+ * 
+ * Hence, `<~<` can be lifted into any variant type constructor; an
+ * `A<~<B` can derive an `F[A]<~<F[B]`, or a `G[B]<~<G[A]`, in
+ * constant time for any `F[+_]` or `G[-_]`, with not a single
+ * `asInstanceOf` in sight.
  */
 trait Liskov[-A, +B] {
   def apply(a: A): B = Liskov.witness(this)(a)

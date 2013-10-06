@@ -13,7 +13,10 @@ import Id._
  * `Leibniz[L,H,A,B]` says that `A` = `B`, and that both of its types are between `L` and `H`. Subtyping lets you
  * loosen the bounds on `L` and `H`.
  *
- * If you just need a witness that `A` = `B`, then you can use `A===B` which is a supertype of any `Leibniz[L,H,A,B]`
+ * If you just need a witness that `A` = `B`, then you can use `A===B`
+ * which is a supertype of any `Leibniz[L,H,A,B]`.  Also improving
+ * upon `=:=` is the ability to lift into any type constructor; an
+ * `A===B` can derive an `F[A]===F[B]` in constant time for any `F`.
  *
  * The more refined types are useful if you need to be able to substitute into restricted contexts.
  */
