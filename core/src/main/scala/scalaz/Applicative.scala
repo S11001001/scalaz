@@ -19,9 +19,29 @@ package scalaz
 ////
 trait Applicative[F[_]] extends Apply[F] { self =>
   ////
+  /** An "empty" `F`, performing no "action", merely producing ''a'',
+    * should that be meaningful for this `F`.
+    *
+    * Mainly interesting for the way it interacts with other
+    * functions, such as `ap`, `Monad#bind`, `ApplicativePlus#plus`,
+    * &c.  See laws in this and various classes, which often discuss
+    * `point`.
+    *
+    * @example {{{
+    * 42.point[List]      // List[Int] = List(42)
+    * type ZipStream[A] = Stream[A] @@ Tags.Zip
+    * 42.point[ZipStream] // ZipStream[Int] = Stream(42, ?)
+    * 42.point[Option]    // Option[Int] = Some(42)
+    * val ftf = 42.point[({type l[a] = String => a})#l]
+    * //  ftf: String => Int = <function1>
+    * ftf("hi")           // Int = 42
+    * 42.point[({type l[a] = (Long, List[String])})#l]
+    * //  (Long, List[String]) = (0,List())
+    * }}}
+    */
   def point[A](a: => A): F[A]
 
-  // alias for point
+  /** Alias for `point`. */
   def pure[A](a: => A): F[A] = point(a)
 
   // derived functions
@@ -33,9 +53,14 @@ trait Applicative[F[_]] extends Apply[F] { self =>
 
   // impls of sequence, traverse, etc
 
+  /** Alias for [[scalaz.Traverse]]`#traverse`.  Occasionally it is more
+    * convenient to get an implicit `Traverse` than `Applicative`,
+    * depending on where each comes from.
+    */
   def traverse[A, G[_], B](value: G[A])(f: A => F[B])(implicit G: Traverse[G]): F[G[B]] =
     G.traverse(value)(f)(this)
 
+  /** Alias for [[scalaz.Traverse]]`#sequence`. */
   def sequence[A, G[_]: Traverse](as: G[F[A]]): F[G[A]] =
     traverse(as)(a => a)
 
@@ -56,7 +81,21 @@ trait Applicative[F[_]] extends Apply[F] { self =>
       case h :: t => ap(filterM(t)(f))(map(f(h))(b => t => if (b) h :: t else t))
     }
 
-  /**The composition of Applicatives `F` and `G`, `[x]F[G[x]]`, is an Applicative */
+  /** The composition of Applicatives `F` and `G`, `[x]F[G[x]]`, is an
+    * Applicative
+    *
+    * @example {{{
+    * val lo = Applicative[List].compose[Option]
+    * //  lo: scalaz.Applicative[[α]List[Option[α]]] = …
+    * lo.point(42) // List[Option[Int]] = List(Some(42))
+    *
+    * lo.ap(List(Some(5), None, Some(7))
+    *     )(List(None, Some((_:Int)+3), Some((_:Int)*3)))
+    * // List[Option[Int]] = List(None, None, None,
+    * //                          Some(8), None, Some(10),
+    * //                          Some(15), None, Some(21))
+    * }}}
+    */
   def compose[G[_]](implicit G0: Applicative[G]): Applicative[({type λ[α] = F[G[α]]})#λ] = new CompositionApplicative[F, G] {
     implicit def F = self
 

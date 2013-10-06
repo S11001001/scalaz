@@ -3,8 +3,9 @@ package scalaz
 ////
 /**
  * Functors, covariant by nature if not by Scala type.  Their key
- * operation is `map`, whose behavior is constrained only by type and
- * the functor laws.
+ * operation is `map`, whose behavior is constrained only by type, the
+ * requirement to ignore runtime type information about the parameter,
+ * and the functor laws.
  *
  * Many useful functors also have natural [[scalaz.Apply]] or
  * [[scalaz.Bind]] operations.  Many also support
@@ -16,7 +17,19 @@ package scalaz
 trait Functor[F[_]]  { self =>
   ////
 
-  /** Lift `f` into `F` and apply to `F[A]`. */
+  /** Lift `f` into `F` and apply to `F[A]`.
+    *
+    * @example {{{
+    * NonEmptyList(1,2,3) map (42 * _)
+    * // scalaz.NonEmptyList[Int] = NonEmptyList(42, 84, 126)
+    *
+    * val f = (a:Int) => (a, 42 * a)
+    * //  f: Int => (Int, Int) = <function1>
+    * val f2 = f map (p => (33 + p._2, p._1, -1))
+    * //  f2: Int => (Int, Int, Int) = <function1>
+    * f2(5) // (Int, Int, Int) = (243,5,-1)
+    * }}}
+    */
   def map[A, B](fa: F[A])(f: A => B): F[B]
 
   // derived functions
@@ -54,7 +67,17 @@ trait Functor[F[_]]  { self =>
       case \/-(x) => map(x)(\/-(_))
     }
 
-  /**The composition of Functors `F` and `G`, `[x]F[G[x]]`, is a Functor */
+  /** The composition of Functors `F` and `G`, `[x]F[G[x]]`, is a
+    * Functor.
+    *
+    * @example {{{
+    * val fne = Functor[({type l[a] = Int => a})#l].compose[NonEmptyList]
+    * //  fne: scalaz.Functor[[α]Int => scalaz.NonEmptyList[α]] = …
+    * val f = fne.map(i => NonEmptyList(i + 2, i * 5))(_ - 27)
+    * //  f: Int => scalaz.NonEmptyList[Int] = <function1>
+    * f(10) // scalaz.NonEmptyList[Int] = NonEmptyList(-15, 23)
+    * }}}
+    */
   def compose[G[_]](implicit G0: Functor[G]): Functor[({type λ[α] = F[G[α]]})#λ] = new CompositionFunctor[F, G] {
     implicit def F = self
 

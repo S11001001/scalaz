@@ -11,13 +11,21 @@ trait Apply[F[_]] extends Functor[F] { self =>
 
   // derived functions
 
+  /** Alias for [[scalaz.Traverse1]]`#traverse1`.  Occasionally it is
+    * more convenient to get an implicit `Traverse1` than `Apply`,
+    * depending on where each comes from.
+    */
   def traverse1[A, G[_], B](value: G[A])(f: A => F[B])(implicit G: Traverse1[G]): F[G[B]] =
     G.traverse1(value)(f)(this)
 
+  /** Alias for [[scalaz.Traverse1]]`#sequence1`. */
   def sequence1[A, G[_]: Traverse1](as: G[F[A]]): F[G[A]] =
     traverse1(as)(a => a)
 
-  /**The composition of Applys `F` and `G`, `[x]F[G[x]]`, is a Apply */
+  /** The composition of Applys `F` and `G`, `[x]F[G[x]]`, is a Apply
+    *
+    * @see [[scalaz.Applicative]]`#compose`
+    */
   def compose[G[_]](implicit G0: Apply[G]): Apply[({type λ[α] = F[G[α]]})#λ] = new CompositionApply[F, G] {
     implicit def F = self
 
