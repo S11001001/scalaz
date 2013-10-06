@@ -45,7 +45,12 @@ trait Foldable[F[_]]  { self =>
   /** Combine the elements of a structure using a monoid. */
   def fold[M: Monoid](t: F[M]): M = foldMap[M, M](t)(x => x)
 
-  /** Strict traversal in an applicative functor `M` that ignores the result of `f`. */  
+  /** Strict traversal in an applicative functor `M` that ignores the
+    * result of `f`.  Essentially, fold over ''fa'', collecting up all
+    * the `M`s but discarding the `B`s.
+    *
+    * @see [[scalaz.Traverse]] for a more powerful variant.
+    */  
   def traverse_[M[_], A, B](fa: F[A])(f: A => M[B])(implicit a: Applicative[M]): M[Unit] =
     foldLeft(fa, a.pure(()))((x, y) => a.ap(f(y))(a.map(x)(_ => _ => ())))
 

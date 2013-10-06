@@ -70,6 +70,8 @@ trait Functor[F[_]]  { self =>
   /** The composition of Functors `F` and `G`, `[x]F[G[x]]`, is a
     * Functor.
     *
+    * @note `ff.compose(fg).map(fga)(f)` = `fga.map(_.map(f))`
+    *
     * @example {{{
     * val fne = Functor[({type l[a] = Int => a})#l].compose[NonEmptyList]
     * //  fne: scalaz.Functor[[α]Int => scalaz.NonEmptyList[α]] = …

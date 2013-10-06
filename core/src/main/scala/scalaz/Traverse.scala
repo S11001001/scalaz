@@ -7,18 +7,30 @@ import scalaz.Id.Id
  * Idiomatic traversal of a structure, as described in
  * [[http://www.cs.ox.ac.uk/jeremy.gibbons/publications/iterator.pdf The Essence of the Iterator Pattern]].
  *
+ * Whereas [[scalaz.Foldable]]`#traverse_` must discard the `F`
+ * structure, a `traverse` can faithfully reconstruct the argument `F`
+ * structure while folding over the `M[B]`s, filling in the `F` with
+ * `B`s step by step using `M`'s `ap` and `point` as needed.
+ *
  * @see [[scalaz.Traverse.TraverseLaw]]
  */
 ////
 trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
   ////
 
-  /** Transform `fa` using `f`, collecting all the `G`s with `ap`. */
+  /** Transform `fa` using `f`, collecting all the `G`s with `ap`.
+    *
+    * @note Call `traverse` instead as a user.
+    */
   def traverseImpl[G[_]:Applicative,A,B](fa: F[A])(f: A => G[B]): G[F[B]]
 
   // derived functions
 
-  /**The composition of Traverses `F` and `G`, `[x]F[G[x]]`, is a Traverse */
+  /** The composition of Traverses `F` and `G`, `[x]F[G[x]]`, is a
+    * Traverse.
+    *
+    * @note `ff.compose(fg).traverse(fga)(f)` = `fga.traverse(_.traverse(f))`
+    */
   def compose[G[_]](implicit G0: Traverse[G]): Traverse[({type λ[α] = F[G[α]]})#λ] = new CompositionTraverse[F, G] {
     implicit def F = self
 
@@ -42,6 +54,7 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
   def traversalS[S]: Traversal[({type f[x]=State[S,x]})#f] =
     new Traversal[({type f[x]=State[S,x]})#f]()(StateT.stateMonad)
 
+  /** Transform `fa` using `f`, collecting all the `G`s with `ap`. */
   def traverse[G[_]:Applicative,A,B](fa: F[A])(f: A => G[B]): G[F[B]] =
     traversal[G].run(fa)(f)
 
@@ -54,6 +67,7 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
   def traverseS[S,A,B](fa: F[A])(f: A => State[S,B]): State[S,F[B]] =
     traversalS[S].run(fa)(f)
 
+  /** `traverseS` and run the result with ''s''. */
   def runTraverseS[S,A,B](fa: F[A], s: S)(f: A => State[S,B]): (S, F[B]) =
     traverseS(fa)(f)(s)
 
@@ -77,7 +91,10 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
     })
   }
 
-  /** Traverse with the identity function. */
+  /** Traverse with the identity function.
+    *
+    * @note `fa.map(f).sequence` = `fa.traverse(f)`
+    */
   def sequence[G[_]:Applicative,A](fga: F[G[A]]): G[F[A]] =
     traversal[G].run[G[A], A](fga)(ga => ga)
 
@@ -85,7 +102,11 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
   def sequenceS[S,A](fga: F[State[S,A]]): State[S,F[A]] =
     traversalS[S].run(fga)(a => a)
 
-  /** A version of `sequence` that infers the nested type constructor. */
+  /** A version of `sequence` that infers the nested type
+    * constructor.
+    *
+    * @note `fa.map(f).sequenceU` = `fa.traverseU(f)`
+    */
   final def sequenceU[A](self: F[A])(implicit G: Unapply[Applicative, A]): G.M[F[G.A]] /*G[F[A]] */ = {
     G.TC.traverse(self)(x => G.apply(x))(this)
   }
@@ -93,6 +114,9 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
   override def map[A,B](fa: F[A])(f: A => B): F[B] =
     traversal[Id](Id.id).run(fa)(f)
 
+  /** `foldLeft`, but also produces the `void` version of ''fa'' in the
+    * same traversal.
+    */
   def foldLShape[A,B](fa: F[A], z: B)(f: (B,A) => B): (B, F[Unit]) =
     runTraverseS(fa, z)(a => State.modify(f(_, a)))
 
@@ -103,6 +127,9 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
   override def foldRight[A, B](fa: F[A], z: => B)(f: (A, => B) => B) =
     foldMap(fa)((a: A) => (Endo.endo(f(a, _: B)))) apply z
 
+  /** Rearrange `A`s to appear in reverse of their appearance in ''fa'',
+    * otherwise preserving structure.
+    */
   def reverse[A](fa: F[A]): F[A] = {
     val (as, shape) = mapAccumL(fa, scala.List[A]())((t,h) => (h :: t,h))
     runTraverseS(shape, as)(_ => for {
@@ -111,18 +138,38 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
     } yield e.head)._2
   }
 
+  /** Transform each `A` with the respectively-positioned element of
+    * ''fb'', by way of `f`.  Return the unused `B`s as well.
+    *
+    * @example {{{
+    * Traverse[List].zipWith(List(1,2,3),List(4,5))((_,_))
+    * // (List[Int], List[(Int, Option[Int])]) =
+    * //    (List(),List((1,Some(4)), (2,Some(5)), (3,None)))
+    * 
+    * Traverse[List].zipWith(List(1,2),List(3,4,5))((_,_))
+    * // (List[Int], List[(Int, Option[Int])]) =
+    * //    (List(5),List((1,Some(3)), (2,Some(4))))
+    * }}}
+    */
   def zipWith[A,B,C](fa: F[A], fb: F[B])(f: (A, Option[B]) => C): (List[B], F[C]) =
     runTraverseS(fa, toList(fb))(a => for {
       bs <- State.get
       _ <- State.put(if (bs.isEmpty) bs else bs.tail)
     } yield f(a, bs.headOption))
 
+  /** Like `zipWith`, but return only the transformed ''fa''. */
   def zipWithL[A,B,C](fa: F[A], fb: F[B])(f: (A,Option[B]) => C): F[C] = zipWith(fa, fb)(f)._2
+  /** Flipped version of `zipWithL`, producing the ''fb'' structure. */
   def zipWithR[A,B,C](fa: F[A], fb: F[B])(f: (Option[A],B) => C): F[C] = zipWith(fb, fa)((b,oa) => f(oa,b))._2
 
+  /** ''fa'', with respectively-positioned elements of ''fb'' until they
+    * run out.
+    */
   def zipL[A,B](fa: F[A], fb: F[B]): F[(A, Option[B])] = zipWithL(fa, fb)((_,_))
+  /** Flipped version of `zipL`. */
   def zipR[A,B](fa: F[A], fb: F[B]): F[(Option[A], B)] = zipWithR(fa, fb)((_,_))
 
+  /** A convenient form of `runTraverseS`. */
   def mapAccumL[S,A,B](fa: F[A], z: S)(f: (S,A) => (S,B)): (S, F[B]) =
     runTraverseS(fa, z)(a => for {
       s1 <- State.init[S]
@@ -130,6 +177,7 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
       _ <- State.put(s2)
     } yield b)
 
+  /** `mapAccumL` but starting at the end. */
   def mapAccumR[S,A,B](fa: F[A], z: S)(f: (S,A) => (S,B)): (S, F[B]) =
     mapAccumL(reverse(fa), z)(f) match { case (s, fb) => (s, reverse(fb)) }
 
