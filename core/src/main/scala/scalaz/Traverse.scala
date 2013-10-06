@@ -12,13 +12,41 @@ import scalaz.Id.Id
  * structure while folding over the `M[B]`s, filling in the `F` with
  * `B`s step by step using `M`'s `ap` and `point` as needed.
  *
+ * Every [[scalaz.Applicative]] is meaningful for traversal, so it is
+ * worth considering what it would mean for a given applicative; here
+ * are some common examples of traversal-based computations.  Note
+ * that with applicative composition and monad transformers, it is
+ * possible to combine these and other effects into a single
+ * traversal.
+ *
+ *  - [[scalaz.Validation]]: Transform the structure's elements, or
+ *    discard the structure, reporting elements that could not be
+ *    transformed and why.
+ *  - [[scalaz.State]]: Like `map`, but remembering details about
+ *    previously visited elements, reporting the new structure and
+ *    final details after traversal.
+ *  - [[scala.collection.immutable.Stream]]: Produce all permutations
+ *    of possible new structure values based on new element values.
+ *  - [[scalaz.effect.IO]]: Replace elements via user interaction or
+ *    some other real-world side-effect.
+ *  - [[scala.Function1]]: Percolate a configuration value down to the
+ *    original elements of the structure.  (Note that if no other
+ *    effects are needed, [[scalaz.Distributive]] offers a more
+ *    powerful abstraction for this purpose.)
+ *
+ * Traversal is very powerful; `Functor` and `Foldable` are
+ * automatically derived from `traverseImpl`.
+ *
+ * @see [[scalaz.Traverse1]], which works under [[scalaz.Apply]]
+ *      rather than Applicative
  * @see [[scalaz.Traverse.TraverseLaw]]
  */
 ////
 trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
   ////
 
-  /** Transform `fa` using `f`, collecting all the `G`s with `ap`.
+  /** Transform `fa` using `f`, collecting all the `G`s with `ap` and
+    * `point`.
     *
     * @note Call `traverse` instead as a user.
     */
@@ -54,7 +82,9 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] { self =>
   def traversalS[S]: Traversal[({type f[x]=State[S,x]})#f] =
     new Traversal[({type f[x]=State[S,x]})#f]()(StateT.stateMonad)
 
-  /** Transform `fa` using `f`, collecting all the `G`s with `ap`. */
+  /** Transform `fa` using `f`, collecting all the `G`s with `ap` and
+    * `point`.
+    */
   def traverse[G[_]:Applicative,A,B](fa: F[A])(f: A => G[B]): G[F[B]] =
     traversal[G].run(fa)(f)
 

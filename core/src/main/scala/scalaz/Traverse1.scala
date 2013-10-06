@@ -6,12 +6,19 @@ import scalaz.Id.Id
 /**
  * A [[scalaz.Traverse]] where `traverse` is total over
  * [[scalaz.Apply]]s.  That is, `toList` cannot return an empty list.
+ * Accordingly, the traversal cannot use `point` of the `G` it is
+ * given.
+ *
+ * @see [[scalaz.Traverse]] for explanation.
  */
 ////
 trait Traverse1[F[_]] extends Traverse[F] with Foldable1[F] { self =>
   ////
 
-  /** Transform `fa` using `f`, collecting all the `G`s with `ap`. */
+  /** Transform `fa` using `f`, collecting all the `G`s with `ap`.
+    *
+    * @note Call `traverse1` instead as a user.
+    */
   def traverse1Impl[G[_]:Apply,A,B](fa: F[A])(f: A => G[B]): G[F[B]]
 
   // derived functions
@@ -21,9 +28,11 @@ trait Traverse1[F[_]] extends Traverse[F] with Foldable1[F] { self =>
   override def foldMap1[A,B](fa: F[A])(f: A => B)(implicit F: Semigroup[B]): B =
     foldLeft1(traverse1Impl[Id, A, B](fa)(a => f(a)))(F.append(_, _))
 
+  /** [[scalaz.Traverse]]`#traverse`, but over [[scalaz.Apply]]. */
   def traverse1[G[_], A, B](fa: F[A])(f: A => G[B])(implicit a: Apply[G]): G[F[B]] =
     traverse1Impl(fa)(f)
 
+  /** [[scalaz.Traverse]]`#sequence`, but over [[scalaz.Apply]]. */
   def sequence1[G[_]:Apply,A](fga: F[G[A]]): G[F[A]] =
     traverse1Impl[G, G[A], A](fga)(identity)
 
