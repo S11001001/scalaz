@@ -231,11 +231,11 @@ object build extends Build {
   // http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.scala-lang.modules%22%20
   val coreModuleDependencies211 = List[(String, ScalaVersion => String)] (
     "scala-parser-combinators" -> {
-      case _ => "1.0.0-RC5"
+      case _ => "1.0.0"
     }
     ,
     "scala-xml"                -> {
-      case _ => "1.0.0-RC7"
+      case _ => "1.0.0"
     }
   )
 
