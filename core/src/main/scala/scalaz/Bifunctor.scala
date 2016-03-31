@@ -29,6 +29,7 @@ trait Bifunctor[F[_, _]]  { self =>
   def leftFunctor[X]: Functor[F[?, X]] =
     new LeftFunctor[F, X] {val F = self}
 
+  /** Like `bimap(fab)(f, identity)`. */
   def leftMap[A, B, C](fab: F[A, B])(f: A => C): F[C, B] =
     bimap(fab)(f, z => z)
 
@@ -40,9 +41,11 @@ trait Bifunctor[F[_, _]]  { self =>
   def uFunctor: Functor[λ[α => F[α, α]]] = 
     new UFunctor[F] {val F = self}
 
+  /** Like `bimap(fab)(identity, g)`. */
   def rightMap[A, B, D](fab: F[A, B])(g: B => D): F[A, D] =
     bimap(fab)(z => z, g)
 
+  /** Map both sides with the same function. */
   def umap[A, B](faa: F[A, A])(f: A => B): F[B, B] =
     bimap(faa)(f, f)
 
