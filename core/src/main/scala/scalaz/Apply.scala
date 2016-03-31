@@ -147,7 +147,19 @@ trait Apply[F[_]] extends Functor[F] { self =>
     }
 
   trait ApplyLaw extends FunctorLaw {
-    /** Lifted functions can be fused. */
+    /** Lifted functions can be fused.  This is an associativity law; it
+      * guarantees that the grouping of `F`-combinations via `ap`
+      * doesn't affect the result.
+      *
+      * {{{
+      * (fa <*> fab) <*> fbc =
+      * fa <*> ^(fbc, fab)(_ compose _)
+      * }}}
+      *
+      * Note that this is not a ''symmetry'' law; the left-to-right
+      * order does matter!  (Not helping matters is that `<*>` is
+      * itself backwards.)
+      */
     def composition[A, B, C](fbc: F[B => C], fab: F[A => B], fa: F[A])(implicit FC: Equal[F[C]]) =
       FC.equal(ap(ap(fa)(fab))(fbc),
                ap(fa)(ap(fab)(map(fbc)((bc: B => C) => (ab: A => B) => bc compose ab))))
