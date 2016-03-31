@@ -153,9 +153,13 @@ trait Foldable[F[_]]  { self =>
   def indexOr[A](fa: F[A], default: => A, i: Int): A =
     index(fa, i) getOrElse default
 
+  /** Convert to [[scala.collection.immutable.List]]. */
   def toList[A](fa: F[A]): List[A] = foldLeft(fa, scala.List[A]())((t, h) => h :: t).reverse
+  /** Convert to [[scala.collection.immutable.Vector]]. */
   def toVector[A](fa: F[A]): Vector[A] = foldLeft(fa, Vector[A]())(_ :+ _)
+  /** Convert to [[scala.collection.immutable.Set]]. */
   def toSet[A](fa: F[A]): Set[A] = foldLeft(fa, Set[A]())(_ + _)
+  /** Convert to [[scala.collection.immutable.Stream]]. */
   def toStream[A](fa: F[A]): Stream[A] = foldRight[A, Stream[A]](fa, Stream.empty)(Stream.cons(_, _))
   def to[A, G[_]](fa: F[A])(implicit c: CanBuildFrom[Nothing, A, G[A]]): G[A] =
     foldLeft(fa, c())(_ += _).result

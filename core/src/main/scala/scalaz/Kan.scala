@@ -4,6 +4,7 @@ package scalaz
 trait Ran[G[_], H[_], A] { ran =>
   def apply[B](f: A => G[B]): H[B]
 
+  /** @see [[scalaz.Functor#map]] */
   def map[B](f: A => B): Ran[G, H, B] = new Ran[G, H, B] {
     def apply[C](k: B => G[C]): H[C] = ran(f andThen k)
   }

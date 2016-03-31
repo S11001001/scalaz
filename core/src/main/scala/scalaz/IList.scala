@@ -235,16 +235,22 @@ sealed abstract class IList[A] extends Product with Serializable {
     find0(this)(f)
   }
 
-  /** Like `map`, but `append` the results together. */
+  /** Like `map`, but `append` the results together.  Generalizes as
+    * [[scalaz.Bind#flatMap]].
+    */
   def flatMap[B](f: A => IList[B]): IList[B] =
     foldRight(IList.empty[B])(f(_) ++ _)
 
-  /** Equivalent to `flatMap(identity)`. */
+  /** Equivalent to `flatMap(identity)`.  Generalizes (in different
+    * directions) as [[scalaz.Bind#join]], [[scalaz.Foldable#sumr]],
+    * and probably several other things.
+    */
   def flatten[B](implicit ev: A <~< IList[B]): IList[B] =
     flatMap(a => ev(a))
 
   /** Step through the list left-to-right, with `b` as the starting
-    * state; return the final state.
+    * state; return the final state.  Generalizes as
+    * [[scalaz.Foldable#foldLeft]].
     *
     * $foldNote
     */
@@ -258,7 +264,8 @@ sealed abstract class IList[A] extends Product with Serializable {
   }
 
   /** Step through the list right-to-left, with `b` as the starting
-    * state; return the final state.
+    * state; return the final state.  Generalizes as
+    * [[scalaz.Foldable#foldRight]].
     *
     * $foldNote
     */
@@ -428,7 +435,8 @@ sealed abstract class IList[A] extends Product with Serializable {
   def length: Int =
     foldLeft(0)((n, _) => n + 1)
 
-  /** Transform every element in the list with `f`.
+  /** Transform every element in the list with `f`.  Generalizes as
+    * [[scalaz.Functor#map]].
     *
     * NB: there are no guarantees about the order or number of times
     * that `f` is called on each element; `f` should be a pure
@@ -651,6 +659,7 @@ sealed abstract class IList[A] extends Product with Serializable {
   def toEphemeralStream: EphemeralStream[A] =
     uncons(EphemeralStream(), (h, t) => EphemeralStream.cons(h, t.toEphemeralStream))
 
+  /** @see [[scalaz.Foldable#toList]] */
   def toList: List[A] =
     foldRight(Nil : List[A])(_ :: _)
 
@@ -660,12 +669,14 @@ sealed abstract class IList[A] extends Product with Serializable {
   def toMap[K, V](implicit ev0: A <~< (K, V), ev1: Order[K]): K ==>> V =
     widen[(K,V)].foldLeft(==>>.empty[K,V])(_ + _)
 
+  /** @see [[scalaz.Foldable#toStream]] */
   def toStream: Stream[A] =
     uncons(Stream.empty, (h, t) => h #:: t.toStream)
 
   override def toString: String =
     IList.show(Show.showA).shows(this) // lame, but helpful for debugging
 
+  /** @see [[scalaz.Foldable#toVector]] */
   def toVector: Vector[A] =
     foldRight(Vector[A]())(_ +: _)
 
@@ -683,6 +694,7 @@ sealed abstract class IList[A] extends Product with Serializable {
       case ICons(h, t) => c(h, t)
     }
 
+  /** @see [[scalaz.Unzip#unzip]] */
   def unzip[B, C](implicit ev: A <~< (B, C)): (IList[B], IList[C]) =
     BFT.bimap(widen[(B,C)].foldLeft((IList.empty[B], IList.empty[C])) {
       case ((as, bs), (a, b)) => (a :: as, b :: bs)
