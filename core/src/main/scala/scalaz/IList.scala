@@ -9,45 +9,86 @@ import Liskov.{ <~<, refl }
 import IList.{empty, single}
 
 /**
- * Safe, invariant alternative to stdlib `List`. Most methods on `List` have a sensible equivalent
- * here, either on the `IList` interface itself or via typeclass instances (which are the same as
- * those defined for stdlib `List`). All methods are total and stack-safe.
+ * Safe, invariant alternative to stdlib `List`. Most methods on
+ * `List` have a sensible equivalent here, either on the `IList`
+ * interface itself or via typeclass instances (which are the same as
+ * those defined for stdlib `List`).  If you do not see your method
+ * here, check those typeclasses.
+ *
+ * All methods are total and stack-safe.
+ *
+ * @define foldNote
+ * Do not make a special effort to use `foldLeft` over `foldRight`;
+ * use the direction that's more natural for your code, which will
+ * often be `foldRight` once you think about it.  `IList` supportsfn
+ * both equally.
+ *
+ * @define headNote
+ * We do not provide `head` because it is not safe.  If you wish to
+ * use `head`, prove such a call is safe with [[scalaz.NonEmptyList]]
+ * or [[scalaz.OneAnd]] first.
  */
 sealed abstract class IList[A] extends Product with Serializable {
 
   // Operations, in alphabetic order
 
-  /** alias for `concat` */
+  /** Alias for `concat`.  See also `++:`. */
   def ++(as: IList[A]): IList[A] =
     concat(as)
 
+  /** Right-associative alias for `concat`.  `xs ++: ys ++: zs` is more
+    * efficient than `xs ++ ys ++ zs`, but the type inference is
+    * slightly worse, so `++` is more convenient for un-chained cases.
+    */
   def ++:(as: IList[A]): IList[A] =
     as.concat(this)
 
+  /** Alias for `::`—prepend `a` to the list. */
   def +:(a: A): IList[A] =
     ::(a)
 
-  /** alias for `foldLeft` */
+  /** Alias for `foldLeft`. */
   def /:[B](b: B)(f: (B, A) => B): B =
     foldLeft(b)(f)
 
+  /** Append `a` to the list.  Note that this is very inefficient
+    * compared to `+:`; suitable for a one-off append, but do not use
+    * in a fold or otherwise iteratively.
+    */
   def :+(a: A): IList[A] =
     concat(single(a))
 
+  /** Prepend an element to the list. */
   def ::(a: A): IList[A] =
     ICons(a, this)
 
+  /** Right-associative alias for `concat`.  `xs ::: ys ::: zs` is more
+    * efficient than `xs ++ ys ++ zs`.
+    */
   def :::(as: IList[A]): IList[A] =
     ++:(as)
 
-  /** alias for `foldRight` */
+  /** Alias for `foldRight`. */
   def :\[B](b: B)(f: (A, B) => B): B =
     foldRight(b)(f)
 
-  /** Returns `f` applied to contents if non-empty, otherwise the zero of `B`. */
+  /** Returns `f` applied to contents if non-empty, otherwise the zero
+    * of `B`.
+    */
   final def <^>[B](f: OneAnd[IList, A] => B)(implicit B: Monoid[B]): B =
     uncons(B.zero, (h, t) => f(OneAnd(h, t)))
 
+  /** Take `A`s to `B`s where `pf` is defined, filtering out `A`s where
+    * `pf` isn't defined.  A generalization of `map`.
+    *
+    * {{{
+    *   IList(-\/("oh"), \/-("hi"), -\/("there")).zipWithIndex.collect {
+    *     case (\/-(s), i) => (s, i)
+    *   }
+    *
+    *   res0: scalaz.IList[(String, Int)] = [(hi,1)]
+    * }}}
+    */
   def collect[B](pf: PartialFunction[A,B]): IList[B] = {
     @tailrec def go(as: IList[A], acc: IList[B]): IList[B] =
       as match {
@@ -59,20 +100,42 @@ sealed abstract class IList[A] extends Product with Serializable {
     go(this, empty).reverse
   }
 
+  /** Return the leftmost `B` from an `A` for which `pf` is defined, or
+    * `None` if none is found.  A generalization of `find`.
+    *
+    * {{{
+    * IList("a", "bee", "aye") collectFirst {
+    *   case s if s.length > 1 => (s.length, s)
+    * }
+    *
+    * res0: Option[(Int, String)] = Some((3,bee))
+    * }}}
+    */
   def collectFirst[B](pf: PartialFunction[A,B]): Option[B] =
     find(pf.isDefinedAt).map(pf)
 
+  /** Add `as` to the end of this list, returning a new list. */
   def concat(as: IList[A]): IList[A] =
     foldRight(as)(_ :: _)
 
   // no contains; use Foldable#element
 
+  /** Whether `indexOfSlice` would succeed. */
   def containsSlice(as: IList[A])(implicit ev: Equal[A]): Boolean =
     indexOfSlice(as).isDefined
 
+  /** How many elements for which `f` returns `true`. */
   def count(f: A => Boolean): Int =
     foldLeft(0)((n, a) => if (f(a)) n + 1 else n)
 
+  /** Remove all duplicate elements; the earliest occurrence of each
+    * element is preserved.
+    *
+    * {{{
+    * IList("x", "h", "x", "y", "z", "y").distinct
+    * res2: scalaz.IList[String] = [x,h,y,z]
+    * }}}
+    */
   def distinct(implicit A: Order[A]): IList[A] = {
     @tailrec def loop(src: IList[A], seen: ISet[A], acc: IList[A]): IList[A] =
       src match {
@@ -88,6 +151,20 @@ sealed abstract class IList[A] extends Product with Serializable {
     loop(this, ISet.empty[A], empty[A])
   }
 
+  /** Drop `n` elements from the start of the list; return an empty list if
+    * `n` >= length, or the list if `n` <= 0.
+    *
+    * {{{
+    * IList(33, 44) drop 1
+    * res4: scalaz.IList[Int] = [44]
+    *
+    * IList(33, 44) drop 5
+    * res5: scalaz.IList[Int] = []
+    *
+    * IList(33, 44) drop -5
+    * res6: scalaz.IList[Int] = [33,44]
+    * }}}
+    */
   def drop(n: Int): IList[A] = {
     @tailrec def drop0(as: IList[A], n: Int): IList[A] =
       if (n < 1) as else as match {
@@ -97,12 +174,17 @@ sealed abstract class IList[A] extends Product with Serializable {
     drop0(this, n)
   }
 
+  /** Like `drop`, but from the end of the list instead of the
+    * beginning.
+    */
   def dropRight(n: Int): IList[A] =
     reverse.drop(n).reverse
 
+  /** Remove the longest suffix that passes `f`. */
   def dropRightWhile(f: A => Boolean): IList[A] =
     reverse.dropWhile(f).reverse
 
+  /** Remove the longest prefix that passes `f`. */
   def dropWhile(f: A => Boolean): IList[A] = {
     @tailrec def dropWhile0(as: IList[A]): IList[A] =
       as match {
@@ -112,17 +194,38 @@ sealed abstract class IList[A] extends Product with Serializable {
     dropWhile0(this)
   }
 
+  /** Return whether `as` is a suffix of the list. */
   def endsWith(as: IList[A])(implicit ev: Equal[A]): Boolean =
     reverse.startsWith(as.reverse)
 
   // no exists; use Foldable#any
 
+  /** Remove elements that don't pass `f`. */
   def filter(f: A => Boolean): IList[A] =
     foldRight(IList.empty[A])((a, as) => if (f(a)) a :: as else as)
 
+  /** Remove elements that ''do'' pass `f`.  This is no more efficient
+    * than `filter` in any situation; use whichever is most natural.
+    *
+    * {{{
+    * IList(1, 3, 2, 4) filterNot (_ < 3)
+    * res7: scalaz.IList[Int] = [3,4]
+    * }}}
+    */
   def filterNot(f: A => Boolean): IList[A] =
     filter(a => !f(a))
 
+  /** Return the leftmost element that passes `f`, or `None` if not
+    * found.
+    *
+    * {{{
+    * IList(("a", 1), ("b", 2), ("a", 3)) find (_._1 === "a")
+    * res8: Option[(String, Int)] = Some((a,1))
+    *
+    * IList(("a", 1), ("b", 2), ("a", 3)) find (_._1 === "c")
+    * res9: Option[(String, Int)] = None
+    * }}}
+    */
   def find(f: A => Boolean): Option[A] = {
     @tailrec def find0[A](as: IList[A])(f: A => Boolean): Option[A] =
       as match {
@@ -132,12 +235,19 @@ sealed abstract class IList[A] extends Product with Serializable {
     find0(this)(f)
   }
 
+  /** Like `map`, but `append` the results together. */
   def flatMap[B](f: A => IList[B]): IList[B] =
     foldRight(IList.empty[B])(f(_) ++ _)
 
+  /** Equivalent to `flatMap(identity)`. */
   def flatten[B](implicit ev: A <~< IList[B]): IList[B] =
     flatMap(a => ev(a))
 
+  /** Step through the list left-to-right, with `b` as the starting
+    * state; return the final state.
+    *
+    * $foldNote
+    */
   def foldLeft[B](b: B)(f: (B, A) => B): B = {
     @tailrec def foldLeft0[A,B](as: IList[A])(b: B)(f: (B, A) => B): B =
       as match {
@@ -147,6 +257,11 @@ sealed abstract class IList[A] extends Product with Serializable {
     foldLeft0(this)(b)(f)
   }
 
+  /** Step through the list right-to-left, with `b` as the starting
+    * state; return the final state.
+    *
+    * $foldNote
+    */
   def foldRight[B](b: B)(f: (A, B) => B): B =
     reverse.foldLeft(b)((b, a) => f(a, b))
 
@@ -162,15 +277,38 @@ sealed abstract class IList[A] extends Product with Serializable {
       m.alter(f(a), _.map(oa => OneAnd(a, oa.head :: oa.tail)) orElse Some(OneAnd(a, empty)))
     }
 
+  /** Return the head if non-empty, [[scala.None]] otherwise.
+    *
+    * $headNote
+    */
   def headOption: Option[A] =
     uncons(None, (h, _) => Some(h))
 
+  /** Return the head if non-empty, [[scalaz.Maybe.Empty]] otherwise.
+    *
+    * $headNote
+    */
   def headMaybe: Maybe[A] =
     uncons(Maybe.Empty(), (h, _) => Maybe.Just(h))
 
+  /** The zero-based index of the first matching element, or
+    * [[scala.None]] if not present.  See `indexWhere` for a more
+    * general version.
+    */
   def indexOf(a: A)(implicit ev: Equal[A]): Option[Int] =
     indexWhere(ev.equal(a, _))
 
+  /** Search for `slice`, returning the zero-indexed location of the start of
+    * the first occurrence of `slice` if found.
+    *
+    * {{{
+    * IList(1, 2, 3, 2, 3) indexOfSlice IList(2, 3)
+    * res0: Option[Int] = Some(1)
+    *
+    * IList(1, 2, 2) indexOfSlice IList(2, 3)
+    * res1: Option[Int] = None
+    * }}}
+    */
   def indexOfSlice(slice: IList[A])(implicit ev: Equal[A]): Option[Int] = {
     @tailrec def indexOfSlice0(i: Int, as: IList[A]): Option[Int] =
       if (as.startsWith(slice)) Some(i) else as match {
@@ -180,6 +318,9 @@ sealed abstract class IList[A] extends Product with Serializable {
     indexOfSlice0(0, this)
   }
 
+  /** The zero-based index of the first element that passes `f`, or
+    * [[scala.None]] if not found.
+    */
   def indexWhere(f: A => Boolean): Option[Int] = {
     @tailrec def indexWhere0(i: Int, as: IList[A]): Option[Int] =
       as match {
@@ -189,12 +330,41 @@ sealed abstract class IList[A] extends Product with Serializable {
     indexWhere0(0, this)
   }
 
+  /** All but the last element of the list, or [[scala.None]] if
+    * empty.
+    *
+    * {{{
+    * IList(1, 2, 3).initOption
+    * res10: Option[scalaz.IList[Int]] = Some([1,2])
+    * }}}
+    */
   def initOption: Option[IList[A]] =
     reverse.tailOption.map(_.reverse)
 
+  /** Every element of the list, then all but the last, then all but the
+    * last two… finishing with the empty list.
+    *
+    * {{{
+    * IList(1, 2, 3).inits
+    * res12: scalaz.IList[scalaz.IList[Int]] = [[1,2,3],[1,2],[1],[]]
+    * }}} */
   def inits: IList[IList[A]] =
     reverse.tails.map(_.reverse)
 
+  /** Alternate between elements of this and `that`.  Finish with the
+    * leftover tail of the longer list.
+    *
+    * {{{
+    * IList(2, 3, 5) interleave IList(7, 11, 13, 17)
+    * res14: scalaz.IList[Int] = [2,7,3,11,5,13,17]
+    *
+    * // Almost the same, but this will cut off the longer tail
+    * IList(2, 3, 5) zip IList(7, 11, 13, 17) flatMap {
+    *   case (x, y) => IList(x, y)
+    * }
+    * res16: scalaz.IList[Int] = [2,7,3,11,5,13]
+    * }}}
+    */
   def interleave(that: IList[A]): IList[A] = {
     @tailrec def loop(xs: IList[A], ys: IList[A], acc: IList[A]): IList[A] = xs match {
       case ICons(h, t) =>
@@ -205,6 +375,14 @@ sealed abstract class IList[A] extends Product with Serializable {
     loop(this, that, IList.empty[A])
   }
 
+  /** Insert `a` between each pair of adjacent elements.  Commonly `a`
+    * is some sort of "separator".
+    *
+    * {{{
+    * IList(2, 3, 5) intersperse 42
+    * res17: scalaz.IList[Int] = [2,42,3,42,5]
+    * }}}
+    */
   def intersperse(a: A): IList[A] = {
     @tailrec def intersperse0(accum: IList[A], rest: IList[A]): IList[A] = rest match {
       case INil() => accum
@@ -214,18 +392,30 @@ sealed abstract class IList[A] extends Product with Serializable {
     intersperse0(empty, this).reverse
   }
 
+  /** Whether the list is empty. */
   def isEmpty: Boolean =
     uncons(true, (_, _) => false)
 
+  /** The zero-based index of the ''last'' matching element, or
+    * [[scala.None]] if not present.  See `lastIndexWhere` for a more
+    * general version.
+    */
   def lastIndexOf(a:A)(implicit ev: Equal[A]): Option[Int] =
     reverse.indexOf(a).map((length - 1) - _)
 
+  /** Search for `as`, returning the zero-indexed location of the start of
+    * the ''last'' occurrence of `as` if found.
+    */
   def lastIndexOfSlice(as: IList[A])(implicit ev: Equal[A]): Option[Int] =
     reverse.indexOfSlice(as.reverse).map(length - _ - as.length)
 
+  /** The zero-based index of the ''last'' element that passes `f`, or
+    * [[scala.None]] if not found.
+    */
   def lastIndexWhere(f: A => Boolean): Option[Int] =
     reverse.indexWhere(f).map((length - 1) - _)
 
+  /** The last element of the list, or [[scala.None]] if empty. */
   @tailrec
   final def lastOption: Option[A] =
     this match {
@@ -234,9 +424,16 @@ sealed abstract class IList[A] extends Product with Serializable {
       case INil() => None
     }
 
+  /** How many elements are in the list.  O(n). */
   def length: Int =
     foldLeft(0)((n, _) => n + 1)
 
+  /** Transform every element in the list with `f`.
+    *
+    * NB: there are no guarantees about the order or number of times
+    * that `f` is called on each element; `f` should be a pure
+    * function.
+    */
   def map[B](f: A => B): IList[B] =
     foldRight(IList.empty[B])(f(_) :: _)
 
@@ -254,9 +451,21 @@ sealed abstract class IList[A] extends Product with Serializable {
 
   // no min/max; use Foldable#minimum, maximum, etc.
 
+  /** Whether the list is ''not'' empty. */
   def nonEmpty: Boolean =
     !isEmpty
 
+  /** Add `a` to the end of the list until it is at least `n` elements
+    * long.
+    *
+    * {{{
+    * IList(1, 2, 3) padTo (5, 42)
+    * res19: scalaz.IList[Int] = [1,2,3,42,42]
+    *
+    * IList(1, 2, 3) padTo (1, 42)
+    * res20: scalaz.IList[Int] = [1,2,3]
+    * }}}
+    */
   def padTo(n: Int, a: A): IList[A] = {
     @tailrec def padTo0(n: Int, init: IList[A], tail: IList[A]): IList[A] =
       if (n < 1) init reverse_::: tail else tail match {
@@ -266,6 +475,13 @@ sealed abstract class IList[A] extends Product with Serializable {
     padTo0(n, empty, this)
   }
 
+  /** The elements that pass `f`, and the elements that fail `f`.
+    *
+    * {{{
+    * IList(1, 10, 3, 8, 9, 5) partition (_ <= 5)
+    * res21: (scalaz.IList[Int], scalaz.IList[Int]) = ([1,3,5],[10,8,9])
+    * }}}
+    */
   def partition(f: A => Boolean): (IList[A], IList[A]) =
     BFT.umap(foldLeft((IList.empty[A], IList.empty[A])) {
       case ((ts, fs), a) => if (f(a)) (a :: ts, fs) else (ts, a :: fs)
@@ -276,6 +492,7 @@ sealed abstract class IList[A] extends Product with Serializable {
     init ++ patch ++ (tail drop replaced)
   }
 
+  /** Equivalent to `takeWhile(f).length`. */
   def prefixLength(f: A => Boolean): Int = {
     @tailrec def prefixLength0(n: Int, as: IList[A]): Int =
       as match {
@@ -293,12 +510,15 @@ sealed abstract class IList[A] extends Product with Serializable {
   def reduceRightOption(f: (A, A) => A): Option[A] =
     reverse.reduceLeftOption((a, b) => f(b, a))
 
+  /** Reverse the list. */
   def reverse: IList[A] =
     foldLeft(IList.empty[A])((as, a) => a :: as)
 
+  /** Equivalent to `map(f).reverse`, but faster. */
   def reverseMap[B](f: A => B): IList[B] =
     foldLeft(IList.empty[B])((bs, a) => f(a) :: bs)
 
+  /** Equivalent to `reverse.concat(as)`, but faster. */
   def reverse_:::(as: IList[A]): IList[A] =
     as.foldLeft(this)((as, a) => a :: as)
 
@@ -322,12 +542,15 @@ sealed abstract class IList[A] extends Product with Serializable {
   def slice(from: Int, until: Int): IList[A] =
     drop(from).take((until max 0)- (from max 0))
 
+  /** Sort elements by the [[scalaz.Order]] of the key returned by `f`. */
   def sortBy[B](f: A => B)(implicit B: Order[B]): IList[A] =
     IList(toList.sortBy(f)(B.toScalaOrdering): _*)
 
+  /** Sort elements by their [[scalaz.Order]]. */
   def sorted(implicit ev: Order[A]): IList[A] =
     sortBy(identity)
 
+  /** `takeWhile(f)` and the tail cut off by that function. */
   def span(f: A => Boolean): (IList[A], IList[A]) = {
     @tailrec def span0(as: IList[A], accum: IList[A]): (IList[A], IList[A]) =
       as match {
@@ -337,6 +560,7 @@ sealed abstract class IList[A] extends Product with Serializable {
     span0(this, empty)
   }
 
+  /** Equivalent to `(this take n, this drop n)` but faster. */
   def splitAt(n: Int): (IList[A], IList[A]) = {
     @tailrec def splitAt0(n: Int, as: IList[A], accum: IList[A]): (IList[A], IList[A]) =
       if (n < 1) (accum.reverse, as) else as match {
@@ -346,6 +570,7 @@ sealed abstract class IList[A] extends Product with Serializable {
     splitAt0(n, this, empty)
   }
 
+  /** Return whether `as` is a prefix of the list. */
   def startsWith(as: IList[A])(implicit ev: Equal[A]): Boolean = {
     @tailrec def startsWith0(a: IList[A], b: IList[A]): Boolean =
       (a, b) match {
@@ -358,6 +583,14 @@ sealed abstract class IList[A] extends Product with Serializable {
 
   // no sum, use Foldable#fold
 
+  /** Every element of the list, then all but the first, then all but
+    * the first two… finishing with the empty list.
+    *
+    * {{{
+    * IList(1, 2, 3).tails
+    * res22: scalaz.IList[scalaz.IList[Int]] = [[1,2,3],[2,3],[3],[]]
+    * }}}
+    */
   def tails: IList[IList[A]] = {
     @tailrec def tails0(as: IList[A], accum: IList[IList[A]]): IList[IList[A]] =
       as match {
@@ -367,9 +600,18 @@ sealed abstract class IList[A] extends Product with Serializable {
     tails0(this, empty)
   }
 
+  /** Return the tail if non-empty, [[scala.None]] otherwise.
+    *
+    * We do not provide `tail` because it is not safe.  If you wish to
+    * use `tail`, prove such a call is safe with
+    * [[scalaz.NonEmptyList]] or [[scalaz.OneAnd]] first.
+    */
   def tailOption: Option[IList[A]] =
     uncons(None, (_, t) => Some(t))
 
+  /** The first `n` elements of the list.  Empty if `n <= 0`, the whole
+    * list if `n >= length`.
+    */
   def take(n: Int): IList[A] = {
     @tailrec def take0(n: Int, as: IList[A], accum: IList[A]): IList[A] =
       if (n < 1) accum.reverse else as match {
@@ -379,9 +621,13 @@ sealed abstract class IList[A] extends Product with Serializable {
     take0(n, this, empty)
   }
 
+  /** The ''last'' `n` elements of the list.  Empty if `n <= 0`, the
+    * whole list if `n >= length`.
+    */
   def takeRight(n: Int): IList[A] =
     drop(length - n)
 
+  /** The longest suffix that passes `f`. */
   def takeRightWhile(f: A => Boolean): IList[A] = {
     @tailrec def go(as: IList[A], accum: IList[A]): IList[A] =
       as match {
@@ -391,6 +637,7 @@ sealed abstract class IList[A] extends Product with Serializable {
     go(this.reverse, empty)
   }
 
+  /** The longest prefix that passes `f`. */
   def takeWhile(f: A => Boolean): IList[A] = {
     @tailrec def takeWhile0(as: IList[A], accum: IList[A]): IList[A] =
       as match {
@@ -425,6 +672,11 @@ sealed abstract class IList[A] extends Product with Serializable {
   def toZipper: Option[Zipper[A]] =
     sToZipper(toStream)
 
+  /** A replacement for primitive pattern-matching situations; pass
+    * functions that represent the `INil` and `ICons` cases.  Usually
+    * a higher-level function provided elsewhere is more
+    * appropriate.
+    */
   def uncons[B](n: => B, c: (A, IList[A]) => B): B =
     this match {
       case INil() => n
@@ -436,7 +688,10 @@ sealed abstract class IList[A] extends Product with Serializable {
       case ((as, bs), (a, b)) => (a :: as, b :: bs)
     })(_.reverse, _.reverse)
 
-  /** Unlike stdlib's version, this is total and simply ignores indices that are out of range */
+  /** Replace the element at `index` with `a`.
+    *
+    * Unlike stdlib's version, this is total and simply ignores indices
+    * that are out of range. */
   def updated(index: Int, a: A): IList[A] = {
     @tailrec def updated0(n: Int, as: IList[A], accum: IList[A]): IList[A] =
       (n, as) match {
