@@ -5,7 +5,8 @@ import scalaz.std.option.{optionMonoid, none, some}
 import scalaz.Ordering.orderingInstance
 
 /** A generalization of `NonEmptyList` to non-`List` things.  For
-  * example, `OneAnd[Vector, A]` is a non-empty `Vector` of `A`.
+  * example, `OneAnd[Vector, A]` is a non-empty
+  * [[scala.collection.immutable.Vector]] of `A`.
   *
   * Only `head` and `tail` are provided as direct methods, because
   * there's little you can do with a `OneAnd` without knowing a bit
@@ -13,9 +14,10 @@ import scalaz.Ordering.orderingInstance
   * typeclass instances on `OneAnd`'s companion; in combination with
   * syntax extensions provided by `scalaz.syntax`, `OneAnd` has a
   * large possible set of methods available by importing.  For
-  * example, `Applicative` on this requires `ApplicativePlus[F]`, and
-  * `Traverse1` on this requires `Traverse[F]`.  See the companion
-  * documentation for a complete list of instances.
+  * example, [[scalaz.Applicative]] on this requires
+  * `ApplicativePlus[F]`, and [[scalaz.Traverse1]] on this requires
+  * `Traverse[F]`.  See the companion documentation for a complete
+  * list of instances.
   *
   * Additionally, unlike `λ[α => (α, F[α])]`, the behavior of typeclass
   * operations on `OneAnd` should be preserved across the natural

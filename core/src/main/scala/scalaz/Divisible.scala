@@ -1,7 +1,7 @@
 package scalaz
 
 ////
-/** `Divisible` is the contravariant analogue of `scalaz.Applicative`
+/** `Divisible` is the contravariant analogue of [[scalaz.Applicative]]
  *
  * @see [[https://github.com/ekmett/contravariant/blob/v1.3.2/src/Data/Functor/Contravariant/Divisible.hs]]
  * @see [[https://youtu.be/cB8DapKQz-I?t=20m35s ZuriHac 2015 - Discrimination is Wrong: Improving Productivity]]

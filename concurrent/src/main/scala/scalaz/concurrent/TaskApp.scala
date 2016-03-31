@@ -1,7 +1,7 @@
 package scalaz
 package concurrent
 
-/** Safe `App` trait that runs a `scalaz.concurrent.Task` action.
+/** Safe `App` trait that runs a [[scalaz.concurrent.Task]] action.
   *
   * Clients should implement `run`, `runl`, or `runc`.
   */

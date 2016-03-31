@@ -1,7 +1,7 @@
 package scalaz
 
 ////
-/** `Divide` is the contravariant analogue of `scalaz.Apply`
+/** `Divide` is the contravariant analogue of [[scalaz.Apply]]
  *
  * @see [[https://github.com/ekmett/contravariant/issues/18]]
  */

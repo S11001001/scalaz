@@ -83,7 +83,7 @@
  *  - [[scalaz.TreeLoc]] A cursor over a [[scalaz.Tree]].
  *  - [[scalaz.Zipper]] A functional cursor over a List.
  *
- *  - [[scalaz.Kleisli]] Represents a function `A => M[B]`, allowing chaining. Also known, and aliased, as `scalaz.ReaderT`.
+ *  - [[scalaz.Kleisli]] Represents a function `A => M[B]`, allowing chaining. Also known, and aliased, as [[scalaz.ReaderT]].
  *  - [[scalaz.StateT]] Computations that modify state.
  *  - [[scalaz.WriterT]] Computations that log a value
  *  - [[scalaz.OptionT]] Represents computations of type `F[Option[A]]`
