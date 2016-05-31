@@ -109,12 +109,14 @@ private sealed trait OneAndFoldable[F[_]] extends Foldable1[OneAnd[F, ?]] {
         if(f(fa.head)) Some(fa.head) else None
     }
 
-  override def foldMap1[A, B: Semigroup](fa: OneAnd[F, A])(f: A => B) =
-    foldMap(fa)(a => some(f(a))) getOrElse f(fa.head)
+  override def foldMap1[A, B](fa: OneAnd[F, A])(f: A => B)(implicit B: Semigroup[B]) = {
+    val bhead = f(fa.head)
+    F.foldMap1Opt(fa.tail)(f).fold(bhead)(B.append(bhead, _))
+  }
 
   override def foldMapRight1[A, B](fa: OneAnd[F, A])(z: A => B)(f: (A, => B) => B) =
-    (F.foldRight(fa.tail, none[B])((a, ob) => ob map (f(a, _)) orElse some(z(a)))
-       map (f(fa.head, _)) getOrElse z(fa.head))
+    F.foldMapRight1Opt(fa.tail)(z)(f)
+      .fold(z(fa.head))(f(fa.head, _))
 
   override def foldMapLeft1[A, B](fa: OneAnd[F, A])(z: A => B)(f: (B, A) => B) =
     F.foldLeft(fa.tail, z(fa.head))(f)
