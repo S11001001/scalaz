@@ -28,6 +28,33 @@ sealed abstract class CorecursiveList[A] {
   type S
   val init: S
   val step: S => Maybe[(S, A)]
+
+  def collect[B](pf: PartialFunction[A, B]): CorecursiveList[B] = {
+    val pff = pf.lift
+    val step = this.step
+    @tailrec def rec(s: S): Maybe[(S, B)] = step(s) match {
+      case Empty() => Empty()
+      case Just((s, a)) =>
+        pff(a) match {
+          case None => rec(s)
+          case Some(b) => Just((s, b))
+        }
+    }
+    CorecursiveList(init)(rec(_))
+  }
+
+  def collectFirst[B](pf: PartialFunction[A, B]): Maybe[B] = {
+    val pff = pf.lift
+    @tailrec def rec(s: S): Maybe[B] = step(s) match {
+      case Empty() => Empty()
+      case Just((s, a)) =>
+        pff(a) match {
+          case None => rec(s)
+          case Some(b) => Just(b)
+        }
+    }
+    rec(init)
+  }
 }
 
 object CorecursiveList extends CorecursiveListInstances {
@@ -68,7 +95,6 @@ object CorecursiveList extends CorecursiveListInstances {
     }
 
   import scala.collection.immutable.{IndexedSeq, LinearSeq}
-  import Maybe.optionMaybeIso.{to => optionTo}
 
   /** Any `LinearSeq` converts to a `CorecursiveList` efficiently.  No
     * natural transformation from `CorecursiveList` to `List` exists,
