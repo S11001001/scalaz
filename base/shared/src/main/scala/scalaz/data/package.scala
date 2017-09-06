@@ -15,4 +15,7 @@ package object data {
 
   object Fix extends FixModule with FixImpl
   type Fix[F[_]] = Fix.Fix[F]
+
+  object IList extends IListModule with IListImpl
+  type IList[A] = IList.IList[A]
 }
