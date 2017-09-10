@@ -13,7 +13,7 @@ package object data {
   type Forall2[F[_, _]] = Forall2.Forall2[F]
   type ∀∀[F[_, _]] = Forall2[F]
 
-  object Fix extends FixModule with FixImpl
+  val Fix: FixModule = FixImpl
   type Fix[F[_]] = Fix.Fix[F]
 
   object IList extends IListModule with IListImpl
